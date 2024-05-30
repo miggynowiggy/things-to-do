@@ -2,5 +2,9 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['maz-ui/nuxt', "@nuxtjs/tailwindcss"],
-  ssr: false
+  ssr: false,
+  mazUi: {
+    injectComponents: true,
+    injectCss: true
+  }
 })
