@@ -1,0 +1,11 @@
+{
+  "name": "things-to-do",
+  "version": "1.0.0",
+  "author": "Miguel Mendoza",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "frontend/*",
+    "backend/*"
+  ]
+}
