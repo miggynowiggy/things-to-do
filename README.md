@@ -25,3 +25,8 @@ A Full-Stack ToDo app that enables you to create, update, mark as done, and dele
 5. On the second terminal, run the command: `backend:dev`
 6. Go to your browser and visit: <http://localhost:3000>
 7. The backend API will be running at: <http://localhost:8000>
+
+### Links
+
+- Live Web App: <https://things-to-do-yyn9.onrender.com>
+- API Documentation (Swagger): <https://ttd-backend-production.up.railway.app/docs>
