@@ -28,5 +28,5 @@ A Full-Stack ToDo app that enables you to create, update, mark as done, and dele
 
 ### Links
 
-Live Web App: <https://things-to-do-yyn9.onrender.com>
-API Documentation (Swagger): <https://ttd-backend-production.up.railway.app/docs>
+- Live Web App: <https://things-to-do-yyn9.onrender.com>
+- API Documentation (Swagger): <https://ttd-backend-production.up.railway.app/docs>
