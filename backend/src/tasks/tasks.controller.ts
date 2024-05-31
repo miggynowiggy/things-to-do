@@ -21,7 +21,7 @@ import { Task } from './entities/task.entity';
 import EntityNotFoundException from 'src/exceptions/EntityNotFound';
 
 @ApiTags('task')
-@Controller('tasks')
+@Controller('/api/tasks')
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 

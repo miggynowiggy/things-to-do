@@ -1,45 +1,38 @@
 <script setup lang="ts">
   import { Icon } from "@iconify/vue"
+  import type Task from "./models/task";
+  import { TaskClass } from "./models/task";
+  import { useToast } from "maz-ui";
+  import { useTaskService } from "./services/tasks";
 
-  interface Task {
-    id: number;
-    content: string;
-    isDone: boolean;
+  interface TaskWithOptions extends Task {
     isSelected: boolean;
   }
 
+  class TaskClassWithOptions extends TaskClass {
+    isSelected = false
+  }
+
+  const toast = useToast()
+  const TaskService = useTaskService()
   const loading = ref({
+    list: false,
     add: false,
     save: false,
     batchDelete: false,
     batchMark: false
   })
-
-  const tasks = ref<Task[]>([
-    { id: 1, content: "Cook the food", isDone: false, isSelected: false }, 
-    { id: 2, content: "Get the ingredients", isDone: true, isSelected: false }, 
-    { id: 3, content: "Preheat the oven", isDone: false, isSelected: false }, 
-    { id: 4, content: "Eat the food", isDone: true, isSelected: false },
-    { id: 5, content: "Ref the food", isDone: false, isSelected: false }
-  ])
-
+  const tasks = ref<TaskWithOptions[]>([])
+  const selectedTask = ref<TaskWithOptions>(new TaskClassWithOptions());
   const selectedTasks = computed(() => tasks.value.filter(t => t.isSelected))
 
-  const selectedTask = ref<Task>({
-    id: 0, content: "", isDone: false, isSelected: false
-  });
-
-  function performToTask(action: string, id: number) {
+  async function performToTask(action: string, id: string) {
     const taskLocation = tasks.value.findIndex(t => t.id === id)
     if (taskLocation === -1) return
 
     const task = { ...tasks.value[taskLocation] }
+    
     switch(action) {
-      case 'MARK_DONE': {
-        task.isDone = true
-        tasks.value[taskLocation] = { ...task }
-        break
-      }
       case 'TOGGLE_SELECT': {
         task.isSelected = !task.isSelected
         tasks.value[taskLocation] = { ...task }
@@ -56,56 +49,119 @@
     }
   }
 
-  function removeTask(id: number) {
-    const taskLocation = tasks.value.findIndex(t => t.id === id)
-    if (taskLocation !== -1) {
-      tasks.value.splice(taskLocation, 1)
+  async function getAll() {
+    loading.value.list = true
+    const plainTasks = await TaskService.getAll()
+    tasks.value = plainTasks.map(p => ({ ...p, isSelected: false }))
+    loading.value.list = false
+  }
+
+  async function addTask() {
+    if (!selectedTask.value.content) return
+
+    loading.value.add = true
+    const newTask = await TaskService.create({
+      content: selectedTask.value.content,
+      isDone: false
+    })
+
+    if (!newTask) {
+      toast.error('Task cannot be created due to error');
+      return
+    }
+
+    updateLocalList('ADD', newTask as Task)
+    clearSelectedTask()
+    toast.success('Task created!')
+    loading.value.add = false
+  }
+
+  function updateLocalList(action: 'ADD' | 'EDIT' | 'REMOVE', task: Task) {
+    switch (action) {
+      case 'ADD': {
+        tasks.value.unshift({ ...task, isSelected: false })
+        break;
+      }
+      case 'EDIT': {
+        const taskLocation = tasks.value.findIndex(t => t.id === task.id)
+        if (taskLocation !== -1) {
+          tasks.value[taskLocation] = { ...task, isSelected: false }
+        }
+        break;
+      }
+      case 'REMOVE': {
+        const taskLocation = tasks.value.findIndex(t => t.id === task.id)
+        if (taskLocation !== -1) {
+          tasks.value.splice(taskLocation, 1)
+        }
+        break;
+      }
+      default: {
+        console.warn("UNHANDLE UPDATE LOCAL LIST ACTION")
+      }
     }
   }
 
-  function batchDelete() {
+  async function markDone(id: string) {
+    const task = tasks.value.find(t => t.id === id);
+    if (!task) {
+      toast.error("Cannot mark task as done due to error");
+      return
+    }
+
+    const updatedTask = await TaskService.update(id, { content: task.content, isDone: !task.isDone })
+    if (!updatedTask) {
+      toast.error("Cannot mark task as done due to error");
+      return
+    }
+    updateLocalList('EDIT', updatedTask as Task)
+    toast.success("Task mark done!");
+  }
+
+  async function saveChanges() {
+    if (!selectedTask.value.id) return
+    loading.value.save = true
+  
+    const { id } = selectedTask.value
+    const updatedTask = await TaskService.update(id, { content: selectedTask.value.content })
+    if (!updatedTask) {
+      toast.error("Cannot mark task as done due to error");
+      return
+    }
+    updateLocalList('ADD', updatedTask as Task)
+    clearSelectedTask()
+    toast.success("Task updated!");
+    loading.value.save = false
+  }
+
+  async function removeTask(id: string) {
+    const deletedTask = await TaskService.remove(id);
+    if (!deletedTask) {
+      toast.error("Cannot delete task due to an error");
+      return
+    }
+    toast.success("Task deleted!");
+    updateLocalList('REMOVE', deletedTask as Task);
+  }
+
+  async function batchDelete() {
     loading.value.batchDelete = true
     for (const selectedTask of selectedTasks.value) {
-      removeTask(selectedTask.id)
+      await removeTask(selectedTask.id)
     }
     loading.value.batchDelete = false
   }
 
-  function batchMarkDone() {
+  async function batchMarkDone() {
     loading.value.batchMark = true
     for (const selectedTask of selectedTasks.value) {
-      performToTask('MARK_DONE', selectedTask.id)
+      await markDone(selectedTask.id)
     }
     loading.value.batchMark = false
   }
 
-  function saveChanges() {
-    loading.value.save = true
-    const { id } = selectedTask.value
-    const taskLocation = tasks.value.findIndex(t => t.id === id)
-    if (taskLocation !== -1) {
-      tasks.value[taskLocation].content = selectedTask.value.content
-      clearSelectedTask()
-    }
-    loading.value.save = false
-  }
-
-  function addTask() {
-    if (!selectedTask.value.content) return
-    loading.value.add = true
-    const task: Task = {
-      id: tasks.value.length,
-      content: selectedTask.value.content,
-      isDone: false,
-      isSelected: false
-    }
-    tasks.value.unshift(task)
-    clearSelectedTask()
-    loading.value.add = false
-  } 
-
   function clearSelectedTask() {
-    selectedTask.value = { id: 0, content: "", isDone: false, isSelected: false }
+    selectedTask.value = new TaskClassWithOptions()
   }
 
   function clearSelectedTasks() {
@@ -114,6 +170,7 @@
     }
   }
 
+  onMounted(async () => await getAll())
 </script>
 
 <template>
@@ -146,6 +203,9 @@
       <!-- Task List -->
       <div class="flex flex-col gap-5 xs:w-full sm:w-full md:w-1/2 outline outline-offset-2 outline-sky-700 rounded-lg shadow-xl sm:mx-2">
         <div class="flex flex-col items-center justify-start gap-5 p-5 max-h-[400px] overflow-y-scroll">
+          <div v-if="!tasks.length" class="w-full">
+            <p class="text-2xl font-bold text-amber-600 text-center">No tasks yet...</p>
+          </div>
           <div v-for="task in tasks" :key="task.id" class="w-full">
               <MazCard elevation radius orientation="row" footer-align="right" class="outline outline-offset-1 outline-gray-300 hover:outline-gray-500 w-full">
                 <template #content>
@@ -179,7 +239,7 @@
                         size="xs" 
                         color="success" 
                         v-if="!task.isDone" 
-                        @click="performToTask('MARK_DONE', task.id)"
+                        @click="markDone(task.id)"
                       >
                         <Icon icon="heroicons:check-circle" class="text-white text-[20px]" />
                       </MazBtn>
