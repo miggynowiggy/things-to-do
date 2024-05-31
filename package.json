@@ -7,5 +7,9 @@
   "workspaces": [
     "frontend/*",
     "backend/*"
-  ]
+  ],
+  "scripts": {
+    "frontend:dev": "cd frontend && yarn install && yarn dev",
+    "backend:dev": "cd backend && yarn install && yarn start:dev"
+  }
 }
